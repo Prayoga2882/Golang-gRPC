@@ -1,7 +1,9 @@
 package api
 
 import (
+	"database/sql"
 	"github.com/gin-gonic/gin"
+	"net/http"
 	db "tutorial.sqlc.dev/app/db/sqlc"
 )
 
@@ -28,7 +30,7 @@ func (server *Server) createAccount(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(200, account)
+	ctx.JSON(http.StatusOK, account)
 }
 
 type getAccountRequest struct {
@@ -38,17 +40,20 @@ type getAccountRequest struct {
 func (server *Server) getAccount(ctx *gin.Context) {
 	var req getAccountRequest
 	if err := ctx.ShouldBindUri(&req); err != nil {
-		ctx.JSON(400, errorResponse(err))
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
 
 	account, err := server.store.GetAccount(ctx, req.ID)
 	if err != nil {
-		ctx.JSON(500, errorResponse(err))
-		return
+		if err == sql.ErrNoRows {
+			ctx.JSON(http.StatusNotFound, errorResponse(err))
+			return
+		}
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 	}
 
-	ctx.JSON(200, account)
+	ctx.JSON(http.StatusOK, account)
 }
 
 type listAccountRequest struct {
