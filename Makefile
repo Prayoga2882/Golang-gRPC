@@ -1,3 +1,5 @@
+DB_URL=postgresql://root:secret@localhost:5433/simplebank?sslmode=disable
+
 postgres:
 	docker run --name postgres12 -p 5433:5432 -e POSTGRES_USER=root -e POSTGRES_PASSWORD=secret -d postgres:12-alpine
 
@@ -5,16 +7,16 @@ createdb:
 	docker exec -it postgres12 createdb --username=root --owner=root simplebank
 
 migrateup:
-	migrate -path db/migration -database "postgresql://root:secret@localhost:5433/simplebank?sslmode=disable" -verbose up
+	migrate -path db/migration -database "$(DB_URL)" -verbose up
 
 migrateup1:
-	migrate -path db/migration -database "postgresql://root:secret@localhost:5433/simplebank?sslmode=disable" -verbose up 1
+	migrate -path db/migration -database "$(DB_URL)" -verbose up 1
 
 migratedown:
-	migrate -path db/migration -database "postgresql://root:secret@localhost:5433/simplebank?sslmode=disable" -verbose down
+	migrate -path db/migration -database "$(DB_URL)" -verbose down
 
 migratedown1:
-	migrate -path db/migration -database "postgresql://root:secret@localhost:5433/simplebank?sslmode=disable" -verbose down 1
+	migrate -path db/migration -database "$(DB_URL)" -verbose down 1
 
 dropdb:
 	docker exec -it postgres12 dropdb simplebank
@@ -31,4 +33,10 @@ server:
 mock:
 	mockgen --package mockdb --destination db/mock/store.go tutorial.sqlc.dev/app/db/sqlc Store
 
-.PHONY: postgres createdb dropdb migrateup migratedown sqlc test server mock migratedown1 migrateup1
+db_docs:
+	dbdocs build doc/db.dbml
+
+db_schema:
+	dbml2sql --postgres -o doc/schema.sql doc/db.dbml
+
+.PHONY: postgres createdb dropdb migrateup migratedown sqlc test server mock migratedown1 migrateup1 db_docs db_schema
