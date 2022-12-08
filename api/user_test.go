@@ -3,12 +3,8 @@ package api
 import (
 	"bytes"
 	"database/sql"
+	"encoding/json"
 	"fmt"
-	"github.com/gin-gonic/gin"
-	"github.com/goccy/go-json"
-	"github.com/golang/mock/gomock"
-	"github.com/lib/pq"
-	"github.com/stretchr/testify/require"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -17,6 +13,11 @@ import (
 	mockdb "tutorial.sqlc.dev/app/db/mock"
 	db "tutorial.sqlc.dev/app/db/sqlc"
 	"tutorial.sqlc.dev/app/util"
+
+	"github.com/gin-gonic/gin"
+	"github.com/golang/mock/gomock"
+	"github.com/lib/pq"
+	"github.com/stretchr/testify/require"
 )
 
 type eqCreateUserParamsMatcher struct {
@@ -216,9 +217,9 @@ func TestLoginUserAPI(t *testing.T) {
 					GetUser(gomock.Any(), gomock.Eq(user.Username)).
 					Times(1).
 					Return(user, nil)
-				//store.EXPECT().
-				//CreateSession(gomock.Any(), gomock.Any()).
-				//Times(1)
+				store.EXPECT().
+					CreateSession(gomock.Any(), gomock.Any()).
+					Times(1)
 			},
 			checkResponse: func(recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusOK, recorder.Code)
