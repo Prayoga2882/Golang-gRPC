@@ -2,11 +2,12 @@ package api
 
 import (
 	"database/sql"
+	"net/http"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
-	"net/http"
-	"time"
 	db "tutorial.sqlc.dev/app/db/sqlc"
 	"tutorial.sqlc.dev/app/util"
 )
@@ -125,6 +126,11 @@ func (server *Server) loginUser(ctx *gin.Context) {
 		server.config.RefreshTokenDuration,
 	)
 
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
 	session, err := server.store.CreateSession(ctx, db.CreateSessionParams{
 		ID:           refreshPayload.ID,
 		Username:     user.Username,
@@ -136,6 +142,7 @@ func (server *Server) loginUser(ctx *gin.Context) {
 	})
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
 	}
 
 	rsp := loginUserResponse{
