@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/hibiken/asynq"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
@@ -25,6 +26,7 @@ import (
 	"tutorial.sqlc.dev/app/gapi"
 	"tutorial.sqlc.dev/app/pb"
 	"tutorial.sqlc.dev/app/util"
+	"tutorial.sqlc.dev/app/worker"
 )
 
 func main() {
@@ -45,8 +47,24 @@ func main() {
 	runDBMigration(config.MigrationURL, config.DBSource)
 
 	store := db.NewStore(conn)
-	go runGatewayServer(config, store)
-	runGrpcServer(config, store)
+	redisOpt := asynq.RedisClientOpt{
+		Addr: config.RedisAddress,
+	}
+
+	taskDistributor := worker.NewRedisTaskDistributor(redisOpt)
+	go runGatewayServer(config, store, taskDistributor)
+	go runTaskProcessor(redisOpt, store)
+
+	runGrpcServer(config, store, taskDistributor)
+}
+
+func runTaskProcessor(redisOpt asynq.RedisClientOpt, store db.Store) {
+	taskProcessor := worker.NewRedisTaskProcessor(redisOpt, store)
+	log.Info().Msg("start task processor")
+	err := taskProcessor.Start()
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed to start task processor")
+	}
 }
 
 func runDBMigration(migrationURL string, dbSource string) {
@@ -62,8 +80,8 @@ func runDBMigration(migrationURL string, dbSource string) {
 	log.Info().Msg("db migrated successfully")
 }
 
-func runGrpcServer(config util.Config, store db.Store) {
-	server, err := gapi.NewServer(config, store)
+func runGrpcServer(config util.Config, store db.Store, taskDistribution worker.TaskDistributor) {
+	server, err := gapi.NewServer(config, store, taskDistribution)
 	if err != nil {
 		log.Fatal().Err(err).Msg("cannot create server")
 	}
@@ -85,8 +103,8 @@ func runGrpcServer(config util.Config, store db.Store) {
 	}
 }
 
-func runGatewayServer(config util.Config, store db.Store) {
-	server, err := gapi.NewServer(config, store)
+func runGatewayServer(config util.Config, store db.Store, taskDistribution worker.TaskDistributor) {
+	server, err := gapi.NewServer(config, store, taskDistribution)
 	if err != nil {
 		log.Fatal().Err(err).Msg("cannot create server")
 	}
