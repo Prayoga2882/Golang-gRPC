@@ -31,7 +31,7 @@ server:
 	go run main.go
 
 mock:
-	mockgen --package mockdb --destination db/mock/store.go tutorial.sqlc.dev/app/db/sqlc Store
+	mockgen -package mockdb -destination db/mock/store.go tutorial.sqlc.dev/app/db/sqlc Store
 
 db_docs:
 	dbdocs build doc/db.dbml
